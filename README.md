@@ -23,6 +23,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 
 docker compose up --build -d
 docker compose exec backend python -m app.seed
+# Jika seed gagal dengan "relation ... does not exist", migrasi belum selesai: tunggu beberapa detik lalu ulangi.
 ```
 
 - Aplikasi: http://localhost:3000
