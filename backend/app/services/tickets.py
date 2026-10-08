@@ -94,3 +94,13 @@ def update_ticket(db: Session, user: User, ticket: Ticket, data: TicketUpdateIn)
 def list_messages(db: Session, ticket: Ticket) -> list[Message]:
     query = select(Message).where(Message.ticket_id == ticket.id).order_by(Message.created_at, Message.id)
     return list(db.scalars(query))
+
+
+def add_message(db: Session, user: User, ticket: Ticket, body: str) -> Message:
+    ensure_not_closed(ticket)
+    message = Message(ticket_id=ticket.id, sender_id=user.id, body=body)
+    db.add(message)
+    ticket.updated_at = utcnow()  # keeps the ticket list sorted by latest activity
+    db.commit()
+    db.refresh(message)
+    return message

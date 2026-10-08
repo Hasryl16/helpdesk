@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
-from app.routers import auth, tickets, users
+from app.routers import auth, tickets, users, ws
 
 app = FastAPI(title="HelpDesk Mini API")
 app.add_middleware(
@@ -31,3 +31,4 @@ async def validation_error(request: Request, exc: RequestValidationError) -> JSO
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(tickets.router)
+app.include_router(ws.router)
