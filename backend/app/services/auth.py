@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Business, User
-from app.schemas import RegisterBusinessIn
+from app.schemas import RegisterBusinessIn, UserCreateIn
 from app.security import hash_password, verify_password
 
 
@@ -44,4 +44,24 @@ def authenticate(db: Session, email: str, password: str) -> User:
     # Same message for unknown email and wrong password, so emails can't be probed.
     if user is None or not verify_password(password, user.password_hash):
         raise HTTPException(401, "Invalid email or password")
+    return user
+
+
+def list_users(db: Session, admin: User) -> list[User]:
+    query = select(User).where(User.business_id == admin.business_id).order_by(User.id)
+    return list(db.scalars(query))
+
+
+def create_user(db: Session, admin: User, data: UserCreateIn) -> User:
+    email = data.email.lower()
+    ensure_email_free(db, email)
+    user = User(
+        business_id=admin.business_id,  # always the admin's own business, never from input
+        name=data.name,
+        email=email,
+        password_hash=hash_password(data.password),
+        role=data.role,
+    )
+    db.add(user)
+    db.commit()
     return user
