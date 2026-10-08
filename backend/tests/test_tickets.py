@@ -85,6 +85,8 @@ def test_closed_is_final(client, world):
 
     res = client.patch(ticket_url, headers=agent, json={"status": "open"})
     assert res.status_code == 409
+    res = client.patch(ticket_url, headers=agent, json={"assigned_agent_id": world["a"]["agent"]})
+    assert res.status_code == 409  # a closed ticket cannot be reassigned either
 
 
 def test_skipping_a_status_is_409(client, world):
@@ -97,3 +99,34 @@ def test_skipping_a_status_is_409(client, world):
 def test_empty_patch_is_422(client, world):
     res = client.patch(f"/tickets/{world['a']['ticket']}", headers=auth_header(world["a"]["agent"]), json={})
     assert res.status_code == 422
+
+
+def test_assign_plus_status_is_checked_against_the_original_status(client, world):
+    ticket_url = f"/tickets/{world['a']['ticket']}"
+    agent_id = world["a"]["agent"]
+    headers = auth_header(agent_id)
+    # open -> resolved would skip in_progress
+    res = client.patch(ticket_url, headers=headers, json={"assigned_agent_id": agent_id, "status": "resolved"})
+    assert res.status_code == 409
+    res = client.patch(ticket_url, headers=headers, json={"assigned_agent_id": agent_id, "status": "in_progress"})
+    assert res.status_code == 200
+
+
+def test_admin_assigns_only_agents_of_own_business(client, world):
+    ticket_url = f"/tickets/{world['a']['ticket']}"
+    admin = auth_header(world["a"]["admin"])
+    for not_an_agent in (world["a"]["admin"], world["a"]["customer2"]):
+        assert client.patch(ticket_url, headers=admin, json={"assigned_agent_id": not_an_agent}).status_code == 404
+
+    res = client.patch(ticket_url, headers=admin, json={"assigned_agent_id": world["a"]["agent"]})
+    assert res.status_code == 200
+    assert res.json()["assigned_agent"]["id"] == world["a"]["agent"]
+
+
+def test_customer_cannot_assign(client, world):
+    res = client.patch(
+        f"/tickets/{world['a']['ticket']}",
+        headers=auth_header(world["a"]["customer1"]),
+        json={"assigned_agent_id": world["a"]["agent"]},
+    )
+    assert res.status_code == 403

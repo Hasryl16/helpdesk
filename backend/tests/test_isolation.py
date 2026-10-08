@@ -27,6 +27,7 @@ def test_customer_cannot_open_another_customers_ticket(client, world):
     headers = auth_header(world["a"]["customer2"])
     assert client.get(f"/tickets/{world['a']['ticket']}", headers=headers).status_code == 404
     assert client.get(f"/tickets/{world['a']['ticket']}/messages", headers=headers).status_code == 404
+    assert client.patch(f"/tickets/{world['a']['ticket']}", headers=headers, json={"status": "open"}).status_code == 404
 
 
 def test_admin_cannot_assign_agent_from_other_business(client, world):

@@ -53,9 +53,16 @@ def create_ticket(db: Session, customer: User, data: TicketCreateIn) -> Ticket:
     return ticket
 
 
+def ensure_not_closed(ticket: Ticket) -> None:
+    if ticket.status == "closed":
+        raise HTTPException(409, "Ticket is closed")
+
+
 def update_ticket(db: Session, user: User, ticket: Ticket, data: TicketUpdateIn) -> Ticket:
     if user.role == "customer" and (data.assigned_agent_id is not None or data.status != "open"):
         raise HTTPException(403, "Customers can only reopen a resolved ticket")
+    ensure_not_closed(ticket)
+    current_status = ticket.status  # check the transition against the status the client saw
 
     if data.assigned_agent_id is not None:
         if user.role == "agent" and data.assigned_agent_id != user.id:
@@ -74,8 +81,8 @@ def update_ticket(db: Session, user: User, ticket: Ticket, data: TicketUpdateIn)
             ticket.status = "in_progress"
 
     if data.status is not None:
-        if data.status not in ALLOWED_TRANSITIONS[ticket.status]:
-            raise HTTPException(409, f"Cannot change status from {ticket.status} to {data.status}")
+        if data.status not in ALLOWED_TRANSITIONS[current_status]:
+            raise HTTPException(409, f"Cannot change status from {current_status} to {data.status}")
         ticket.status = data.status
 
     ticket.updated_at = utcnow()
