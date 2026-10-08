@@ -130,3 +130,9 @@ def test_customer_cannot_assign(client, world):
         json={"assigned_agent_id": world["a"]["agent"]},
     )
     assert res.status_code == 403
+
+
+def test_blank_ticket_fields_are_422(client, world):
+    blank = {"subject": " ", "category": " ", "priority": "low", "message": "   "}
+    res = client.post("/tickets", headers=auth_header(world["a"]["customer2"]), json=blank)
+    assert res.status_code == 422

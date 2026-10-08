@@ -78,3 +78,9 @@ def test_other_customers_ticket_is_closed_with_4404(client, world):
 def test_refresh_token_is_closed_with_4401(client, world):
     refresh = create_token(world["a"]["agent"], "refresh")
     assert close_code(client, f"/ws/tickets/{world['a']['ticket']}?token={refresh}") == 4401
+
+
+def test_non_json_frame_gets_an_error_event(client, world):
+    with client.websocket_connect(ws_url(world["a"]["ticket"], world["a"]["agent"])) as ws:
+        ws.send_text("hello")
+        assert ws.receive_json()["type"] == "error"

@@ -31,7 +31,10 @@ async def ticket_socket(websocket: WebSocket, ticket_id: int, token: str | None 
     rooms[ticket_id].add(websocket)
     try:
         while True:
-            data = await websocket.receive_json()
+            try:
+                data = await websocket.receive_json()
+            except ValueError:  # not JSON; handle_incoming answers with an error event
+                data = None
             await handle_incoming(websocket, user_id, ticket_id, data)
     except WebSocketDisconnect:
         pass

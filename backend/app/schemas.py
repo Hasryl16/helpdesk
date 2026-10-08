@@ -82,6 +82,8 @@ class SenderOut(UserBrief):
 
 
 class TicketCreateIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     subject: str = Field(min_length=1, max_length=200)
     category: str = Field(min_length=1, max_length=50)
     priority: Priority

@@ -48,7 +48,7 @@ cp .env.example .env              # lalu isi JWT_SECRET
 .venv/bin/python -m app.seed
 .venv/bin/uvicorn app.main:app --reload       # http://localhost:8000
 
-# 3. Frontend (terminal lain)
+# 3. Frontend (terminal lain, dari root repo)
 cd frontend
 npm install
 cp .env.example .env.local
