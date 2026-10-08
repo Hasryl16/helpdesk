@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
+from app.routers import auth
 
 app = FastAPI(title="HelpDesk Mini API")
 app.add_middleware(
@@ -25,3 +26,6 @@ async def http_error(request: Request, exc: StarletteHTTPException) -> JSONRespo
 async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
     body = {"error": {"status": 422, "message": "Validation error", "details": jsonable_encoder(exc.errors())}}
     return JSONResponse(body, status_code=422)
+
+
+app.include_router(auth.router)
