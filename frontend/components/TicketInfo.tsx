@@ -27,6 +27,7 @@ type Changes = { status?: Status; assigned_agent_id?: number };
 export default function TicketInfo({ ticket, onChange }: { ticket: Ticket; onChange: (ticket: Ticket) => void }) {
   const user = useUser();
   const isStaff = user.role !== "customer";
+  const closed = ticket.status === "closed"; // a closed ticket can no longer be changed
   const { data: users } = useSWR<User[]>(user.role === "admin" ? "/users" : null, apiFetch);
   const agents = users?.filter((u) => u.role === "agent") ?? [];
   const [error, setError] = useState("");
@@ -50,7 +51,7 @@ export default function TicketInfo({ ticket, onChange }: { ticket: Ticket; onCha
   }
 
   return (
-    <aside className="card space-y-3 text-sm md:w-72 md:shrink-0">
+    <aside className="card space-y-3 break-words text-sm md:w-72 md:shrink-0">
       <div>
         <h1 className="text-lg font-semibold">
           #{ticket.id} {ticket.subject}
@@ -75,13 +76,13 @@ export default function TicketInfo({ ticket, onChange }: { ticket: Ticket; onCha
         </div>
       </dl>
 
-      {user.role === "agent" && ticket.assigned_agent?.id !== user.id && (
+      {user.role === "agent" && !closed && ticket.assigned_agent?.id !== user.id && (
         <button disabled={busy} onClick={() => update({ assigned_agent_id: user.id })} className="btn-primary w-full">
           Take this ticket
         </button>
       )}
 
-      {user.role === "admin" && (
+      {user.role === "admin" && !closed && (
         <select
           value={ticket.assigned_agent?.id ?? ""}
           disabled={busy}
@@ -110,7 +111,11 @@ export default function TicketInfo({ ticket, onChange }: { ticket: Ticket; onCha
         </div>
       )}
 
-      {error && <p className="text-red-600">{error}</p>}
+      {error && (
+        <p role="alert" className="text-red-600">
+          {error}
+        </p>
+      )}
     </aside>
   );
 }

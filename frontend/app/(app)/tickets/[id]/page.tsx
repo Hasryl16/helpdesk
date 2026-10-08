@@ -13,14 +13,21 @@ export default function TicketPage() {
   const { id } = useParams<{ id: string }>();
   const user = useUser();
   const { data: ticket, error, mutate: mutateTicket } = useSWR<Ticket, ApiError>(`/tickets/${id}`, apiFetch);
-  const { data: messages, mutate: mutateMessages } = useSWR<Message[]>(`/tickets/${id}/messages`, apiFetch);
+  const {
+    data: messages,
+    error: messagesError,
+    isValidating: loadingMessages,
+    mutate: mutateMessages,
+  } = useSWR<Message[], ApiError>(`/tickets/${id}/messages`, apiFetch);
   const [chatError, setChatError] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   // Live updates: new messages are appended, ticket changes replace the ticket.
   const { connected, send } = useTicketSocket(id, (event) => {
     if (event.type === "message") {
-      mutateMessages((current = []) => [...current, event.message], { revalidate: false });
+      // SWR drops a fetch that finishes after a local change, so while one is running, fetch again instead.
+      if (loadingMessages) mutateMessages();
+      else mutateMessages((current = []) => [...current, event.message], { revalidate: false });
     } else if (event.type === "ticket") {
       mutateTicket(event.ticket, { revalidate: false });
     } else {
@@ -28,11 +35,25 @@ export default function TicketPage() {
     }
   });
 
+  // After every (re)connect, reload what may have happened while the socket was down.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (connected) {
+      mutateMessages();
+      mutateTicket();
+    }
+  }, [connected, mutateMessages, mutateTicket]);
 
-  if (error) return <p className="text-red-600">{error.status === 404 ? "Ticket not found." : error.message}</p>;
+  // Keep the newest message in view; scrolls only the chat list, not the whole page.
+  useEffect(() => {
+    const list = listRef.current;
+    list?.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+  }, [messages, ticket]);
+
+  // Once loaded, a failed background refresh keeps the page instead of replacing it with the error.
+  if (!ticket && error) {
+    return <p className="text-red-600">{error.status === 404 ? "Ticket not found." : error.message}</p>;
+  }
+  if (!messages && messagesError) return <p className="text-red-600">{messagesError.message}</p>;
   if (!ticket || !messages) return <p className="text-gray-500">Loading...</p>;
 
   function handleSend(event: FormEvent<HTMLFormElement>) {
@@ -55,22 +76,25 @@ export default function TicketPage() {
           <span>{connected ? "● live" : "○ connecting..."}</span>
         </div>
 
-        <ul className="flex-1 space-y-2 overflow-y-auto">
+        <ul ref={listRef} aria-live="polite" className="flex-1 space-y-2 overflow-y-auto">
           {messages.map((message) => (
             <li
               key={message.id}
-              className={`max-w-[85%] rounded p-2 ${message.sender.id === user.id ? "ml-auto bg-blue-50" : "bg-gray-100"}`}
+              className={`max-w-[85%] break-words rounded p-2 ${message.sender.id === user.id ? "ml-auto bg-blue-50" : "bg-gray-100"}`}
             >
               <p className="text-xs text-gray-500">
                 {message.sender.name} · {message.sender.role} · {new Date(message.created_at).toLocaleString()}
               </p>
-              {message.body && <p className="whitespace-pre-wrap break-words text-sm">{message.body}</p>}
+              {message.body && <p className="whitespace-pre-wrap text-sm">{message.body}</p>}
             </li>
           ))}
-          <div ref={bottomRef} />
         </ul>
 
-        {chatError && <p className="mt-2 text-sm text-red-600">{chatError}</p>}
+        {chatError && (
+          <p role="alert" className="mt-2 text-sm text-red-600">
+            {chatError}
+          </p>
+        )}
 
         {ticket.status === "closed" ? (
           <p className="mt-2 text-sm text-gray-500">This ticket is closed. No new messages.</p>

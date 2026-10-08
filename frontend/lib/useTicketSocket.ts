@@ -25,11 +25,13 @@ export function useTicketSocket(ticketId: string, onEvent: (event: SocketEvent) 
       socket.onopen = () => setConnected(true);
       socket.onmessage = (e) => handleEvent(JSON.parse(e.data) as SocketEvent);
       socket.onclose = async (e) => {
+        if (stopped) return; // the page was closed
         setConnected(false);
-        if (stopped || e.code === 4404) return; // 4404: no access to this ticket, retrying won't help
+        // 4404: no access to this ticket, 1008: not a valid ticket id. Retrying won't help.
+        if (e.code === 4404 || e.code === 1008) return;
         // 4401: token expired. Without a new one, the next API call sends the user to /login.
         if (e.code === 4401 && !(await refreshAccessToken())) return;
-        retry = setTimeout(connect, 2000);
+        if (!stopped) retry = setTimeout(connect, 2000); // the page may have closed during the refresh
       };
     }
 
