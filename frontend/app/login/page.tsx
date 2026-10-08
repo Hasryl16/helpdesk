@@ -50,7 +50,11 @@ export default function LoginPage() {
           autoComplete="current-password"
           className="input"
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
         <button disabled={loading} className="btn-primary w-full">
           {loading ? "Logging in..." : "Log in"}
         </button>

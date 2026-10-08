@@ -58,7 +58,11 @@ export default function NewTicketPage() {
           aria-label="Message"
           className="input"
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
         <button disabled={saving} className="btn-primary">
           {saving ? "Sending..." : "Create ticket"}
         </button>

@@ -39,11 +39,15 @@ export default function AdminUsersPage() {
       <section>
         <h1 className="mb-3 text-xl font-semibold">Users in {me.business.name}</h1>
         {isLoading && <p className="text-gray-500">Loading...</p>}
-        {error && <p className="text-red-600">{error.message}</p>}
+        {error && (
+          <p role="alert" className="text-red-600">
+            {error.message}
+          </p>
+        )}
         <ul className="space-y-2">
           {users?.map((user) => (
             <li key={user.id} className="card flex items-center justify-between gap-2 text-sm">
-              <span>
+              <span className="min-w-0 break-words">
                 {user.name}
                 <br />
                 <span className="text-gray-500">{user.email}</span>
@@ -57,7 +61,15 @@ export default function AdminUsersPage() {
       <section>
         <h2 className="mb-3 text-lg font-semibold">Add agent or customer</h2>
         <form onSubmit={handleSubmit} className="card space-y-3">
-          <input name="name" required maxLength={100} placeholder="Name" aria-label="Name" className="input" />
+          <input
+            name="name"
+            required
+            maxLength={100}
+            placeholder="Name"
+            aria-label="Name"
+            autoComplete="off"
+            className="input"
+          />
           <input
             name="email"
             type="email"
@@ -82,7 +94,11 @@ export default function AdminUsersPage() {
             <option value="agent">Agent</option>
             <option value="customer">Customer</option>
           </select>
-          {formError && <p className="text-sm text-red-600">{formError}</p>}
+          {formError && (
+            <p role="alert" className="text-sm text-red-600">
+              {formError}
+            </p>
+          )}
           <button disabled={saving} className="btn-primary">
             {saving ? "Saving..." : "Add user"}
           </button>

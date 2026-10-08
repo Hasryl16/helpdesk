@@ -44,7 +44,11 @@ export default function TicketsPage() {
       </div>
 
       {isLoading && <p className="text-gray-500">Loading...</p>}
-      {error && <p className="text-red-600">{error.message}</p>}
+      {error && (
+        <p role="alert" className="text-red-600">
+          {error.message}
+        </p>
+      )}
       {tickets?.length === 0 && <p className="text-gray-500">No tickets found.</p>}
 
       <ul className="space-y-2">

@@ -20,7 +20,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, [hasToken, router]);
 
   // Once the user is loaded, a failed background refresh of /auth/me must not unmount the page.
-  if (!user && error) return <p className="p-4 text-red-600">{error.message}</p>;
+  if (!user && error) {
+    return (
+      <p role="alert" className="p-4 text-red-600">
+        {error.message}
+      </p>
+    );
+  }
   if (!user) return <p className="p-4 text-gray-500">Loading...</p>;
 
   return (
