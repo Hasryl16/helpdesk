@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+*.db
+
+# secrets and runtime files
+.env
+uploads/
+
+# Node / Next.js
+node_modules/
+.next/
