@@ -27,8 +27,7 @@ export function saveTokens(tokens: { access_token: string; refresh_token?: strin
 export function logout(): void {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
-  // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- the full reload is the point
-  window.location.href = "/login";
+  window.location.replace("/login");
 }
 
 async function toApiError(res: Response): Promise<ApiError> {

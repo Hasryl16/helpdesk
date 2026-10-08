@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { publicPost, saveTokens } from "@/lib/api";
 import type { Tokens } from "@/lib/types";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +18,8 @@ export default function RegisterPage() {
       // Creates the business and its admin account, then logs in straight away.
       const tokens = await publicPost<Tokens>("/auth/register-business", Object.fromEntries(form));
       saveTokens(tokens);
-      router.push("/tickets");
+      // A full page load (not router.push) so nothing cached from an earlier login can show.
+      window.location.replace("/tickets");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
       setLoading(false);
@@ -31,15 +30,42 @@ export default function RegisterPage() {
     <main className="mx-auto mt-16 max-w-sm p-4">
       <h1 className="mb-6 text-2xl font-semibold">Register your business</h1>
       <form onSubmit={handleSubmit} className="card space-y-3">
-        <input name="business_name" required maxLength={100} placeholder="Business name" className="input" />
-        <input name="name" required maxLength={100} placeholder="Your name" className="input" />
-        <input name="email" type="email" required placeholder="Email" className="input" />
+        <input
+          name="business_name"
+          required
+          maxLength={100}
+          placeholder="Business name"
+          aria-label="Business name"
+          autoComplete="organization"
+          className="input"
+        />
+        <input
+          name="name"
+          required
+          maxLength={100}
+          placeholder="Your name"
+          aria-label="Your name"
+          autoComplete="name"
+          className="input"
+        />
+        <input
+          name="email"
+          type="email"
+          required
+          placeholder="Email"
+          aria-label="Email"
+          autoComplete="email"
+          className="input"
+        />
         <input
           name="password"
           type="password"
           required
           minLength={8}
+          maxLength={128}
           placeholder="Password (min. 8 characters)"
+          aria-label="Password"
+          autoComplete="new-password"
           className="input"
         />
         {error && <p className="text-sm text-red-600">{error}</p>}
