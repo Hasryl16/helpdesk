@@ -60,6 +60,11 @@ class Message(Base):
     ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"))
     sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     body: Mapped[str] = mapped_column(Text, default="")
+    attachment_path: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     sender: Mapped[User] = relationship(lazy="joined")
+
+    @property
+    def has_attachment(self) -> bool:
+        return self.attachment_path is not None

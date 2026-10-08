@@ -1,8 +1,10 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from app.deps import CurrentUser, CustomerUser, DbSession
 from app.realtime import broadcast
 from app.schemas import MessageOut, Status, TicketCreateIn, TicketOut, TicketUpdateIn
+from app.services import attachments
 from app.services import tickets as ticket_service
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
@@ -41,3 +43,25 @@ def update_ticket(
 def list_messages(ticket_id: int, user: CurrentUser, db: DbSession):
     ticket = ticket_service.get_ticket_for_user(db, user, ticket_id)
     return ticket_service.list_messages(db, ticket)
+
+
+@router.post("/{ticket_id}/attachments", response_model=MessageOut, status_code=201)
+def upload_attachment(
+    ticket_id: int, file: UploadFile, user: CurrentUser, db: DbSession, background: BackgroundTasks
+):
+    ticket = ticket_service.get_ticket_for_user(db, user, ticket_id)
+    ticket_service.ensure_not_closed(ticket)  # check before writing the file to disk
+    name = attachments.save_image(file)
+    message = ticket_service.add_message(db, user, ticket, attachment_path=name)
+    out = MessageOut.model_validate(message)
+    background.add_task(broadcast, ticket.id, {"type": "message", "message": out.model_dump(mode="json")})
+    return out
+
+
+@router.get("/{ticket_id}/attachments/{message_id}")
+def download_attachment(ticket_id: int, message_id: int, user: CurrentUser, db: DbSession):
+    ticket = ticket_service.get_ticket_for_user(db, user, ticket_id)
+    message = ticket_service.get_attachment_message(db, ticket, message_id)
+    return FileResponse(
+        attachments.file_path(message.attachment_path), media_type=attachments.media_type(message.attachment_path)
+    )

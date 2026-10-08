@@ -109,6 +109,7 @@ class MessageOut(ORMModel):
     id: int
     ticket_id: int
     body: str
+    has_attachment: bool
     created_at: datetime
     sender: SenderOut
 

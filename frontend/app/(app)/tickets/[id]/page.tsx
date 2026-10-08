@@ -1,8 +1,9 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import useSWR from "swr";
+import AttachmentImage from "@/components/AttachmentImage";
 import TicketInfo from "@/components/TicketInfo";
 import { apiFetch, type ApiError } from "@/lib/api";
 import { useUser } from "@/lib/auth";
@@ -20,6 +21,7 @@ export default function TicketPage() {
     mutate: mutateMessages,
   } = useSWR<Message[], ApiError>(`/tickets/${id}/messages`, apiFetch);
   const [chatError, setChatError] = useState("");
+  const [uploading, setUploading] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
 
   // Live updates: new messages are appended, ticket changes replace the ticket.
@@ -66,6 +68,24 @@ export default function TicketPage() {
     else setChatError("Not connected yet, try again in a moment.");
   }
 
+  async function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // allow picking the same file again
+    if (!file) return;
+    const form = new FormData();
+    form.append("file", file);
+    setChatError("");
+    setUploading(true);
+    try {
+      // No need to add the message here: it arrives through the WebSocket like any other.
+      await apiFetch<Message>(`/tickets/${id}/attachments`, { method: "POST", body: form });
+    } catch (err) {
+      setChatError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 md:flex-row">
       <TicketInfo ticket={ticket} onChange={(updated) => mutateTicket(updated, { revalidate: false })} />
@@ -86,6 +106,7 @@ export default function TicketPage() {
                 {message.sender.name} · {message.sender.role} · {new Date(message.created_at).toLocaleString()}
               </p>
               {message.body && <p className="whitespace-pre-wrap text-sm">{message.body}</p>}
+              {message.has_attachment && <AttachmentImage ticketId={ticket.id} messageId={message.id} />}
             </li>
           ))}
         </ul>
@@ -108,6 +129,10 @@ export default function TicketPage() {
               autoComplete="off"
               className="input"
             />
+            <label className={`btn cursor-pointer ${uploading ? "opacity-50" : ""}`}>
+              {uploading ? "..." : "Image"}
+              <input type="file" accept="image/*" hidden disabled={uploading} onChange={handleFile} />
+            </label>
             <button disabled={!connected} className="btn-primary">
               Send
             </button>

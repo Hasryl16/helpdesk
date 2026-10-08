@@ -96,11 +96,26 @@ def list_messages(db: Session, ticket: Ticket) -> list[Message]:
     return list(db.scalars(query))
 
 
-def add_message(db: Session, user: User, ticket: Ticket, body: str) -> Message:
+def add_message(
+    db: Session, user: User, ticket: Ticket, body: str = "", attachment_path: str | None = None
+) -> Message:
     ensure_not_closed(ticket)
-    message = Message(ticket_id=ticket.id, sender_id=user.id, body=body)
+    message = Message(ticket_id=ticket.id, sender_id=user.id, body=body, attachment_path=attachment_path)
     db.add(message)
     ticket.updated_at = utcnow()  # keeps the ticket list sorted by latest activity
     db.commit()
     db.refresh(message)
+    return message
+
+
+def get_attachment_message(db: Session, ticket: Ticket, message_id: int) -> Message:
+    message = db.scalar(
+        select(Message).where(
+            Message.id == message_id,
+            Message.ticket_id == ticket.id,
+            Message.attachment_path.is_not(None),
+        )
+    )
+    if message is None:
+        raise HTTPException(404, "Attachment not found")
     return message

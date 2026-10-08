@@ -44,6 +44,7 @@ export interface Message {
   id: number;
   ticket_id: number;
   body: string;
+  has_attachment: boolean;
   created_at: string;
   sender: UserBrief & { role: Role };
 }
