@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 !.env.example
+
+# written by `next dev` when an AI coding agent runs it
+/AGENTS.md
