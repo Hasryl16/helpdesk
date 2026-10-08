@@ -62,6 +62,7 @@ def upload_attachment(
 def download_attachment(ticket_id: int, message_id: int, user: CurrentUser, db: DbSession):
     ticket = ticket_service.get_ticket_for_user(db, user, ticket_id)
     message = ticket_service.get_attachment_message(db, ticket, message_id)
-    return FileResponse(
-        attachments.file_path(message.attachment_path), media_type=attachments.media_type(message.attachment_path)
-    )
+    path = attachments.file_path(message.attachment_path)
+    if not path.is_file():  # e.g. the uploads folder was lost
+        raise HTTPException(404, "Attachment not found")
+    return FileResponse(path, media_type=attachments.media_type(message.attachment_path))

@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from app.config import settings
 from tests.utils import auth_header
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
@@ -42,6 +45,10 @@ def test_other_business_cannot_upload_or_download(client, world):
     res = client.get(f"/tickets/{ticket_id}/attachments/{message_id}", headers=auth_header(world["a"]["admin"]))
     assert res.status_code == 404
 
+    # business A's own ticket id combined with B's message id must not work either
+    own_ticket_url = f"/tickets/{world['a']['ticket']}/attachments/{message_id}"
+    assert client.get(own_ticket_url, headers=auth_header(world["a"]["admin"])).status_code == 404
+
 
 def test_closed_ticket_rejects_upload(client, world):
     ticket_id = world["a"]["ticket"]
@@ -49,3 +56,13 @@ def test_closed_ticket_rejects_upload(client, world):
     for status in ("in_progress", "resolved", "closed"):
         client.patch(f"/tickets/{ticket_id}", headers=agent, json={"status": status})
     assert upload(client, ticket_id, world["a"]["customer1"], PNG).status_code == 409
+
+
+def test_missing_file_on_disk_is_404(client, world):
+    ticket_id = world["a"]["ticket"]
+    message_id = upload(client, ticket_id, world["a"]["customer1"], PNG).json()["id"]
+    for file in Path(settings.upload_dir).iterdir():
+        file.unlink()
+
+    res = client.get(f"/tickets/{ticket_id}/attachments/{message_id}", headers=auth_header(world["a"]["agent"]))
+    assert res.status_code == 404

@@ -129,9 +129,15 @@ export default function TicketPage() {
               autoComplete="off"
               className="input"
             />
-            <label className={`btn cursor-pointer ${uploading ? "opacity-50" : ""}`}>
+            <label className={`btn cursor-pointer focus-within:ring-2 ${uploading ? "opacity-50" : ""}`}>
               {uploading ? "..." : "Image"}
-              <input type="file" accept="image/*" hidden disabled={uploading} onChange={handleFile} />
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                className="sr-only"
+                disabled={uploading}
+                onChange={handleFile}
+              />
             </label>
             <button disabled={!connected} className="btn-primary">
               Send
