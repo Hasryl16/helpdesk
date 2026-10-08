@@ -2,6 +2,7 @@ import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from app.security import create_token
+from app.realtime import rooms
 from tests.utils import auth_header
 
 
@@ -28,6 +29,8 @@ def test_message_reaches_everyone_in_the_room_and_is_saved(client, world):
             assert event["type"] == "message"
             assert event["message"]["body"] == "Halo, ada yang bisa bantu?"
             assert event["message"]["sender"]["role"] == "customer"
+
+    assert ticket_id not in rooms  # the room is removed once everyone has left
 
     history = client.get(f"/tickets/{ticket_id}/messages", headers=auth_header(world["a"]["agent"])).json()
     assert history[-1]["body"] == "Halo, ada yang bisa bantu?"
@@ -70,3 +73,8 @@ def test_other_business_ticket_is_closed_with_4404(client, world):
 
 def test_other_customers_ticket_is_closed_with_4404(client, world):
     assert close_code(client, ws_url(world["a"]["ticket"], world["a"]["customer2"])) == 4404
+
+
+def test_refresh_token_is_closed_with_4401(client, world):
+    refresh = create_token(world["a"]["agent"], "refresh")
+    assert close_code(client, f"/ws/tickets/{world['a']['ticket']}?token={refresh}") == 4401

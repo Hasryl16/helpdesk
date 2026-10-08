@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 
 from fastapi import WebSocket
@@ -10,6 +11,7 @@ rooms: dict[int, set[WebSocket]] = defaultdict(set)
 async def broadcast(ticket_id: int, data: dict) -> None:
     for websocket in list(rooms.get(ticket_id, ())):
         try:
-            await websocket.send_json(data)
-        except Exception:  # socket already gone; its own handler removes it from the room
-            rooms[ticket_id].discard(websocket)
+            # A client that stops reading would otherwise block this loop (and everyone after it) forever.
+            await asyncio.wait_for(websocket.send_json(data), timeout=5)
+        except Exception:  # socket gone or not reading: stop sending to it
+            rooms.get(ticket_id, set()).discard(websocket)

@@ -48,15 +48,15 @@ async def handle_incoming(websocket: WebSocket, user_id: int, ticket_id: int, da
         await websocket.send_json({"type": "error", "message": "Message must be 1-5000 characters"})
         return
 
-    with SessionLocal() as db:
-        user = db.get(User, user_id)
-        try:
+    try:
+        with SessionLocal() as db:
+            user = db.get(User, user_id)
             # Reload the ticket each time so a status change (e.g. closed) is seen immediately.
             ticket = ticket_service.get_ticket_for_user(db, user, ticket_id)
             message = ticket_service.add_message(db, user, ticket, body)
-        except HTTPException as exc:
-            await websocket.send_json({"type": "error", "message": exc.detail})
-            return
-        out = MessageOut.model_validate(message).model_dump(mode="json")
+            out = MessageOut.model_validate(message).model_dump(mode="json")
+    except HTTPException as exc:
+        await websocket.send_json({"type": "error", "message": exc.detail})
+        return
 
     await broadcast(ticket_id, {"type": "message", "message": out})
