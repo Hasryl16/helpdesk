@@ -67,3 +67,47 @@ class UserOut(ORMModel):
 
 class MeOut(UserOut):
     business: BusinessOut
+
+
+# --- tickets & messages ---
+
+
+class UserBrief(ORMModel):
+    id: int
+    name: str
+
+
+class SenderOut(UserBrief):
+    role: Role
+
+
+class TicketCreateIn(BaseModel):
+    subject: str = Field(min_length=1, max_length=200)
+    category: str = Field(min_length=1, max_length=50)
+    priority: Priority
+    message: str = Field(min_length=1, max_length=5000)
+
+
+class TicketUpdateIn(BaseModel):
+    status: Status | None = None
+    assigned_agent_id: int | None = None
+
+
+class TicketOut(ORMModel):
+    id: int
+    subject: str
+    category: str
+    priority: Priority
+    status: Status
+    created_at: datetime
+    updated_at: datetime
+    customer: UserBrief
+    assigned_agent: UserBrief | None
+
+
+class MessageOut(ORMModel):
+    id: int
+    ticket_id: int
+    body: str
+    created_at: datetime
+    sender: SenderOut
