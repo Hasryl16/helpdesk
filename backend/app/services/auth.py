@@ -41,7 +41,6 @@ def register_business(db: Session, data: RegisterBusinessIn) -> User:
 
 def authenticate(db: Session, email: str, password: str) -> User:
     user = db.scalar(select(User).where(User.email == email.lower()))
-    # Same message for unknown email and wrong password, so emails can't be probed.
     if user is None or not verify_password(password, user.password_hash):
         raise HTTPException(401, "Invalid email or password")
     return user
@@ -56,7 +55,7 @@ def create_user(db: Session, admin: User, data: UserCreateIn) -> User:
     email = data.email.lower()
     ensure_email_free(db, email)
     user = User(
-        business_id=admin.business_id,  # always the admin's own business, never from input
+        business_id=admin.business_id,
         name=data.name,
         email=email,
         password_hash=hash_password(data.password),

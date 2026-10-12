@@ -80,3 +80,44 @@ def test_access_token_is_not_a_refresh_token(client, world):
 def test_missing_or_garbage_token_is_401(client):
     assert client.get("/auth/me").status_code == 401
     assert client.get("/auth/me", headers={"Authorization": "Bearer garbage"}).status_code == 401
+
+
+def test_login_sets_cookies_and_me_works_with_cookie(client, world):
+    res = client.post("/auth/login", json={"email": "agent@a.example.com", "password": "password123"})
+    assert res.status_code == 200
+    assert "access_token" in res.cookies
+    assert "refresh_token" in res.cookies
+
+    # Authenticate /auth/me purely with cookie (no Authorization header)
+    me_res = client.get("/auth/me")
+    assert me_res.status_code == 200
+    assert me_res.json()["email"] == "agent@a.example.com"
+
+
+def test_refresh_and_logout_with_cookies(client, world):
+    client.post("/auth/login", json={"email": "agent@a.example.com", "password": "password123"})
+    res = client.post("/auth/refresh")
+    assert res.status_code == 200
+    assert "access_token" in res.cookies
+
+    # ws-token works
+    ws_res = client.get("/auth/ws-token")
+    assert ws_res.status_code == 200
+    assert "token" in ws_res.json()
+
+    # logout deletes cookies
+    logout_res = client.post("/auth/logout")
+    assert logout_res.status_code == 200
+    assert client.cookies.get("access_token") is None or logout_res.headers.get("set-cookie")
+
+
+def test_login_rate_limiting(client, world):
+    for _ in range(5):
+        res = client.post("/auth/login", json={"email": "agent@a.example.com", "password": "wrong-password"})
+        assert res.status_code == 401
+
+    res = client.post("/auth/login", json={"email": "agent@a.example.com", "password": "password123"})
+    assert res.status_code == 429
+    assert res.json()["error"]["status"] == 429
+    assert "Too many login attempts" in res.json()["error"]["message"]
+

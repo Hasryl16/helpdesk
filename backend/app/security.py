@@ -9,7 +9,6 @@ ALGORITHM = "HS256"
 
 
 def _password_bytes(password: str) -> bytes:
-    # bcrypt only reads 72 bytes and bcrypt>=5 raises on longer input, so cut it explicitly.
     return password.encode()[:72]
 
 
@@ -31,7 +30,6 @@ def create_token(user_id: int, token_type: str) -> str:
 
 
 def decode_token(token: str, expected_type: str) -> int | None:
-    """Return the user id from a valid token of the expected type, otherwise None."""
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[ALGORITHM])
     except jwt.InvalidTokenError:

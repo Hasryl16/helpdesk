@@ -27,7 +27,7 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(255), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
-    role: Mapped[str] = mapped_column(String(20))  # admin | agent | customer
+    role: Mapped[str] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     business: Mapped[Business] = relationship(lazy="joined")
@@ -43,7 +43,7 @@ class Ticket(Base):
     assigned_agent_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     subject: Mapped[str] = mapped_column(String(200))
     category: Mapped[str] = mapped_column(String(50))
-    priority: Mapped[str] = mapped_column(String(10))  # low | medium | high
+    priority: Mapped[str] = mapped_column(String(10))
     status: Mapped[str] = mapped_column(String(20), default="open")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -10,7 +10,6 @@ MEDIA_TYPES = {"png": "image/png", "jpg": "image/jpeg", "gif": "image/gif", "web
 
 
 def detect_image_type(data: bytes) -> str | None:
-    """Look at the file's first bytes; the client's Content-Type header can lie."""
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return "png"
     if data.startswith(b"\xff\xd8\xff"):

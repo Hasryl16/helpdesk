@@ -26,7 +26,7 @@ export default function AdminUsersPage() {
         body: JSON.stringify(Object.fromEntries(new FormData(formElement))),
       });
       formElement.reset();
-      await mutate(); // reload the list so the new user shows up
+      await mutate();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Could not create the user");
     } finally {

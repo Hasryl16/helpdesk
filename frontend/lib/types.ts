@@ -1,5 +1,3 @@
-// Mirrors the backend schemas in backend/app/schemas.py.
-
 export type Role = "admin" | "agent" | "customer";
 export type Priority = "low" | "medium" | "high";
 export type Status = "open" | "in_progress" | "resolved" | "closed";
@@ -54,7 +52,6 @@ export interface Tokens {
   refresh_token: string;
 }
 
-// What the server sends over /ws/tickets/{id}.
 export type SocketEvent =
   | { type: "message"; message: Message }
   | { type: "ticket"; ticket: Ticket }

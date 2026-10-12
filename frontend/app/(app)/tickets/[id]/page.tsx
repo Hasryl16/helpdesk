@@ -24,10 +24,8 @@ export default function TicketPage() {
   const [uploading, setUploading] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
 
-  // Live updates: new messages are appended, ticket changes replace the ticket.
   const { connected, send } = useTicketSocket(id, (event) => {
     if (event.type === "message") {
-      // SWR drops a fetch that finishes after a local change, so while one is running, fetch again instead.
       if (loadingMessages) mutateMessages();
       else mutateMessages((current = []) => [...current, event.message], { revalidate: false });
     } else if (event.type === "ticket") {
@@ -37,7 +35,6 @@ export default function TicketPage() {
     }
   });
 
-  // After every (re)connect, reload what may have happened while the socket was down.
   useEffect(() => {
     if (connected) {
       mutateMessages();
@@ -45,13 +42,11 @@ export default function TicketPage() {
     }
   }, [connected, mutateMessages, mutateTicket]);
 
-  // Keep the newest message in view; scrolls only the chat list, not the whole page.
   useEffect(() => {
     const list = listRef.current;
     list?.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
   }, [messages, ticket]);
 
-  // Once loaded, a failed background refresh keeps the page instead of replacing it with the error.
   if (!ticket && error) {
     return <p className="text-red-600">{error.status === 404 ? "Ticket not found." : error.message}</p>;
   }
@@ -70,14 +65,13 @@ export default function TicketPage() {
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    event.target.value = ""; // allow picking the same file again
+    event.target.value = "";
     if (!file) return;
     const form = new FormData();
     form.append("file", file);
     setChatError("");
     setUploading(true);
     try {
-      // No need to add the message here: it arrives through the WebSocket like any other.
       await apiFetch<Message>(`/tickets/${id}/attachments`, { method: "POST", body: form });
     } catch (err) {
       setChatError(err instanceof Error ? err.message : "Upload failed");

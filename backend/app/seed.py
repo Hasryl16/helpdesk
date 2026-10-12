@@ -1,5 +1,3 @@
-"""Demo data: python -m app.seed  (safe to run again; existing businesses are skipped)."""
-
 from sqlalchemy import select
 
 from app.db import SessionLocal

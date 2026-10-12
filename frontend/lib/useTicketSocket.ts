@@ -1,37 +1,41 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { getAccessToken, refreshAccessToken } from "@/lib/api";
+import { apiFetch, refreshAccessToken } from "@/lib/api";
 import type { SocketEvent } from "@/lib/types";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000";
 
-/**
- * Keeps a WebSocket open to /ws/tickets/{id} while the page is shown.
- * Every server event goes to onEvent. A dropped connection reconnects after 2 seconds.
- */
 export function useTicketSocket(ticketId: string, onEvent: (event: SocketEvent) => void) {
   const socketRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
-  const handleEvent = useEffectEvent(onEvent); // always the latest onEvent, without reconnecting
+  const handleEvent = useEffectEvent(onEvent);
 
   useEffect(() => {
     let stopped = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
 
-    function connect() {
-      const socket = new WebSocket(`${WS_URL}/ws/tickets/${ticketId}?token=${getAccessToken() ?? ""}`);
+    async function connect() {
+      let token = "";
+      try {
+        const res = await apiFetch<{ token: string }>("/auth/ws-token");
+        token = res.token;
+      } catch {
+        if (!stopped) retry = setTimeout(connect, 2000);
+        return;
+      }
+      if (stopped) return;
+
+      const socket = new WebSocket(`${WS_URL}/ws/tickets/${ticketId}?token=${token}`);
       socketRef.current = socket;
       socket.onopen = () => setConnected(true);
       socket.onmessage = (e) => handleEvent(JSON.parse(e.data) as SocketEvent);
       socket.onclose = async (e) => {
-        if (stopped) return; // the page was closed
+        if (stopped) return;
         setConnected(false);
-        // 4404: no access to this ticket, 1008: not a valid ticket id. Retrying won't help.
         if (e.code === 4404 || e.code === 1008) return;
-        // 4401: token expired. Without a new one, the next API call sends the user to /login.
         if (e.code === 4401 && !(await refreshAccessToken())) return;
-        if (!stopped) retry = setTimeout(connect, 2000); // the page may have closed during the refresh
+        if (!stopped) retry = setTimeout(connect, 2000);
       };
     }
 
@@ -43,7 +47,6 @@ export function useTicketSocket(ticketId: string, onEvent: (event: SocketEvent) 
     };
   }, [ticketId]);
 
-  /** Returns false when the socket is not connected (the message was not sent). */
   function send(body: string): boolean {
     const socket = socketRef.current;
     if (socket?.readyState !== WebSocket.OPEN) return false;

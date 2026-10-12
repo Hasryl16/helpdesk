@@ -7,7 +7,6 @@ import { apiFetch } from "@/lib/api";
 import { useUser } from "@/lib/auth";
 import type { Status, Ticket, User } from "@/lib/types";
 
-// Same rules as ALLOWED_TRANSITIONS in the backend; here they only decide which buttons to show.
 const NEXT_STATUS: Record<Status, Status[]> = {
   open: ["in_progress"],
   in_progress: ["resolved"],
@@ -27,13 +26,12 @@ type Changes = { status?: Status; assigned_agent_id?: number };
 export default function TicketInfo({ ticket, onChange }: { ticket: Ticket; onChange: (ticket: Ticket) => void }) {
   const user = useUser();
   const isStaff = user.role !== "customer";
-  const closed = ticket.status === "closed"; // a closed ticket can no longer be changed
+  const closed = ticket.status === "closed";
   const { data: users } = useSWR<User[]>(user.role === "admin" ? "/users" : null, apiFetch);
   const agents = users?.filter((u) => u.role === "agent") ?? [];
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Customers only get the reopen button; staff get every allowed next status.
   const nextStatuses = isStaff
     ? NEXT_STATUS[ticket.status]
     : NEXT_STATUS[ticket.status].filter((s) => s === "open");

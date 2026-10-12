@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { publicPost, saveTokens } from "@/lib/api";
+import { publicPost } from "@/lib/api";
 import type { Tokens } from "@/lib/types";
 
 export default function LoginPage() {
@@ -15,12 +15,10 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const tokens = await publicPost<Tokens>("/auth/login", {
+      await publicPost<Tokens>("/auth/login", {
         email: form.get("email"),
         password: form.get("password"),
       });
-      saveTokens(tokens);
-      // A full page load (not router.push) so nothing cached from an earlier login can show.
       window.location.replace("/tickets");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

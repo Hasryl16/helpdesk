@@ -14,9 +14,9 @@ router = APIRouter()
 @router.websocket("/ws/tickets/{ticket_id}")
 async def ticket_socket(websocket: WebSocket, ticket_id: int, token: str | None = None):
     await websocket.accept()
-    user_id = decode_token(token, "access") if token else None
+    raw_token = token or websocket.cookies.get("access_token")
+    user_id = decode_token(raw_token, "access") if raw_token else None
 
-    # A socket can stay open for hours, so every step opens its own short DB session.
     with SessionLocal() as db:
         user = db.get(User, user_id) if user_id else None
         if user is None:
@@ -33,7 +33,7 @@ async def ticket_socket(websocket: WebSocket, ticket_id: int, token: str | None 
         while True:
             try:
                 data = await websocket.receive_json()
-            except ValueError:  # not JSON; handle_incoming answers with an error event
+            except ValueError:
                 data = None
             await handle_incoming(websocket, user_id, ticket_id, data)
     except WebSocketDisconnect:
@@ -54,7 +54,6 @@ async def handle_incoming(websocket: WebSocket, user_id: int, ticket_id: int, da
     try:
         with SessionLocal() as db:
             user = db.get(User, user_id)
-            # Reload the ticket each time so a status change (e.g. closed) is seen immediately.
             ticket = ticket_service.get_ticket_for_user(db, user, ticket_id)
             message = ticket_service.add_message(db, user, ticket, body)
             out = MessageOut.model_validate(message).model_dump(mode="json")

@@ -12,9 +12,6 @@ class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# --- auth & users ---
-
-
 class RegisterBusinessIn(BaseModel):
     business_name: str = Field(min_length=1, max_length=100)
     name: str = Field(min_length=1, max_length=100)
@@ -56,7 +53,6 @@ class BusinessOut(ORMModel):
 
 
 class UserOut(ORMModel):
-    # No password_hash field: it can never leak through a response.
     id: int
     business_id: int
     name: str
@@ -67,9 +63,6 @@ class UserOut(ORMModel):
 
 class MeOut(UserOut):
     business: BusinessOut
-
-
-# --- tickets & messages ---
 
 
 class UserBrief(ORMModel):

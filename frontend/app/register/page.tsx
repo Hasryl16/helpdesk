@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { publicPost, saveTokens } from "@/lib/api";
+import { publicPost } from "@/lib/api";
 import type { Tokens } from "@/lib/types";
 
 export default function RegisterPage() {
@@ -15,10 +15,7 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
     try {
-      // Creates the business and its admin account, then logs in straight away.
-      const tokens = await publicPost<Tokens>("/auth/register-business", Object.fromEntries(form));
-      saveTokens(tokens);
-      // A full page load (not router.push) so nothing cached from an earlier login can show.
+      await publicPost<Tokens>("/auth/register-business", Object.fromEntries(form));
       window.location.replace("/tickets");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");

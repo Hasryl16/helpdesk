@@ -13,7 +13,6 @@ const STATUS_FILTERS: Status[] = ["open", "in_progress", "resolved", "closed"];
 export default function TicketsPage() {
   const user = useUser();
   const [status, setStatus] = useState<Status | "">("");
-  // The backend already filters by business and role; the page only adds the status filter.
   const { data: tickets, error, isLoading } = useSWR<Ticket[]>(
     status ? `/tickets?status=${status}` : "/tickets",
     apiFetch,

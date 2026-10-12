@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from app.models import Message, Ticket, User, utcnow
 from app.schemas import TicketCreateIn, TicketUpdateIn
 
-# Which status may follow which. "resolved" -> "open" is the reopen path.
 ALLOWED_TRANSITIONS = {
     "open": {"in_progress"},
     "in_progress": {"resolved"},
@@ -15,7 +14,6 @@ ALLOWED_TRANSITIONS = {
 
 
 def visible_tickets(user: User) -> Select:
-    """Tickets this user may see. Every ticket read starts from this query."""
     query = select(Ticket).where(Ticket.business_id == user.business_id)
     if user.role == "customer":
         query = query.where(Ticket.customer_id == user.id)
@@ -23,7 +21,6 @@ def visible_tickets(user: User) -> Select:
 
 
 def get_ticket_for_user(db: Session, user: User, ticket_id: int) -> Ticket:
-    # A ticket of another business (or customer) looks exactly like a missing one: 404.
     ticket = db.scalar(visible_tickets(user).where(Ticket.id == ticket_id))
     if ticket is None:
         raise HTTPException(404, "Ticket not found")
@@ -46,7 +43,7 @@ def create_ticket(db: Session, customer: User, data: TicketCreateIn) -> Ticket:
         priority=data.priority,
     )
     db.add(ticket)
-    db.flush()  # gives ticket.id so the first message can point to it
+    db.flush()
     db.add(Message(ticket_id=ticket.id, sender_id=customer.id, body=data.message))
     db.commit()
     db.refresh(ticket)
@@ -62,7 +59,7 @@ def update_ticket(db: Session, user: User, ticket: Ticket, data: TicketUpdateIn)
     if user.role == "customer" and (data.assigned_agent_id is not None or data.status != "open"):
         raise HTTPException(403, "Customers can only reopen a resolved ticket")
     ensure_not_closed(ticket)
-    current_status = ticket.status  # check the transition against the status the client saw
+    current_status = ticket.status
 
     if data.assigned_agent_id is not None:
         if user.role == "agent" and data.assigned_agent_id != user.id:
@@ -102,7 +99,7 @@ def add_message(
     ensure_not_closed(ticket)
     message = Message(ticket_id=ticket.id, sender_id=user.id, body=body, attachment_path=attachment_path)
     db.add(message)
-    ticket.updated_at = utcnow()  # keeps the ticket list sorted by latest activity
+    ticket.updated_at = utcnow()
     db.commit()
     db.refresh(message)
     return message

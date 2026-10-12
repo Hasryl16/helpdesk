@@ -1,25 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import useSWR from "swr";
-import { apiFetch, getAccessToken, logout } from "@/lib/api";
+import { apiFetch, logout } from "@/lib/api";
 import { UserContext } from "@/lib/auth";
 import type { Me } from "@/lib/types";
 
-// Every page inside app/(app)/ is wrapped by this layout, so none of them renders without a logged-in user.
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const hasToken = getAccessToken() !== null;
-  // An expired token is handled inside apiFetch: refresh, or redirect to /login.
-  const { data: user, error } = useSWR<Me>(hasToken ? "/auth/me" : null, apiFetch);
+  const { data: user, error } = useSWR<Me>("/auth/me", apiFetch);
 
-  useEffect(() => {
-    if (!hasToken) router.replace("/login");
-  }, [hasToken, router]);
-
-  // Once the user is loaded, a failed background refresh of /auth/me must not unmount the page.
   if (!user && error) {
     return (
       <p role="alert" className="p-4 text-red-600">

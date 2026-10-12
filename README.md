@@ -10,7 +10,7 @@ Aplikasi ticketing multi-bisnis (multi-tenant). Customer membuka tiket keluhan, 
 | Auth | JWT access + refresh token (PyJWT), password di-hash dengan bcrypt |
 | Real-time | WebSocket bawaan FastAPI |
 
-Fitur bonus yang dikerjakan: Docker Compose, test pytest (fokus isolasi antar-bisnis), upload lampiran gambar di chat.
+Fitur bonus yang dikerjakan: Docker Compose, test pytest (fokus isolasi antar-bisnis), upload lampiran gambar di chat, rate limiting login, cookie httpOnly + pengecekan proxy/middleware Next.js.
 
 ## Menjalankan dengan Docker (paling cepat)
 
@@ -125,6 +125,7 @@ frontend/
   app/             halaman (App Router); app/(app)/ berisi halaman yang wajib login
   lib/             api client, user context, tipe data, hook WebSocket
   components/      komponen UI
+  proxy.ts         pengecekan auth server-side (Next.js proxy/middleware)
 ```
 
 ## API
@@ -133,9 +134,11 @@ Dokumentasi lengkap ada di http://localhost:8000/docs.
 
 | Method | Path | Peran | Fungsi |
 |---|---|---|---|
-| POST | `/auth/register-business` | publik | Buat bisnis + akun admin, langsung mengembalikan token |
-| POST | `/auth/login` | publik | Login, mengembalikan access + refresh token |
-| POST | `/auth/refresh` | publik (refresh token) | Terbitkan access token baru |
+| POST | `/auth/register-business` | publik | Buat bisnis + akun admin, set cookie httpOnly |
+| POST | `/auth/login` | publik | Login (rate limit 5/menit), set cookie httpOnly |
+| POST | `/auth/refresh` | publik (refresh token/cookie) | Terbitkan access token baru |
+| POST | `/auth/logout` | semua | Hapus cookie autentikasi |
+| GET | `/auth/ws-token` | semua | Ambil access token untuk koneksi WebSocket |
 | GET | `/auth/me` | semua | User yang login + bisnisnya |
 | GET | `/users` | admin | Daftar user di bisnisnya |
 | POST | `/users` | admin | Buat akun agent atau customer |
@@ -149,7 +152,7 @@ Dokumentasi lengkap ada di http://localhost:8000/docs.
 | WS | `/ws/tickets/{id}?token=<access_token>` | sesuai akses | Kirim/terima pesan dan perubahan tiket |
 
 Semua error memakai format `{"error": {"status": 404, "message": "Ticket not found"}}`:
-401 belum login · 403 peran tidak berhak · 404 tidak ada atau milik bisnis lain · 409 konflik (email/nama bisnis sudah dipakai, transisi status tidak valid, tiket closed) · 413 file terlalu besar · 422 input tidak valid.
+401 belum login · 403 peran tidak berhak · 404 tidak ada atau milik bisnis lain · 409 konflik (email/nama bisnis sudah dipakai, transisi status tidak valid, tiket closed) · 413 file terlalu besar · 422 input tidak valid · 429 rate limit terlampaui.
 
 Protokol WebSocket:
 - client → server: `{"body": "teks pesan"}`
@@ -167,8 +170,9 @@ Alur status: `open → in_progress → resolved → closed`, dengan jalur buka k
 - JWT menyimpan `type` (`access`/`refresh`) supaya refresh token tidak bisa dipakai sebagai access token.
 - Pesan chat dikirim lewat WebSocket, disimpan ke database dulu, baru di-broadcast ke semua yang membuka tiket itu. Perubahan status/assignee lewat `PATCH /tickets/{id}`, lalu di-broadcast juga.
 - Handler WebSocket membuka session database singkat untuk setiap operasi, karena koneksi WebSocket bisa hidup lama.
-- Frontend: semua halaman adalah client component; token disimpan di `localStorage`; `apiFetch` otomatis memakai refresh token saat dapat 401, dan mengarahkan ke `/login` jika gagal.
-- Logout melakukan full page reload supaya cache data user sebelumnya ikut terhapus.
+- Frontend: token disimpan dalam cookie `httpOnly` (bebas risiko pencurian localStorage via XSS); pengecekan rute dilindungi berjalan server-side lewat Next.js `proxy.ts`, dan panggilan API di-proxy lewat `/api/*` di `next.config.ts`.
+- Rate limiting login: `POST /auth/login` membatasi percobaan maksimal 5 request per 60 detik per client IP (429 Too Many Requests).
+- Logout menghapus cookie session httpOnly dan me-refresh halaman ke `/login`.
 - Lampiran gambar tidak di-serve sebagai file statis; gambar diambil lewat endpoint yang mengecek akses tiket. Jenis file dicek dari isi file (magic bytes), bukan dari header `Content-Type`.
 
 ### Tambahan dari model data minimal
@@ -187,8 +191,6 @@ Alur status: `open → in_progress → resolved → closed`, dengan jalur buka k
 
 ### Trade-off dan batasan
 - Room WebSocket disimpan di memori proses, jadi backend harus jalan dengan satu worker. Untuk banyak worker/server: Redis pub/sub.
-- Token di `localStorage` rentan dicuri lewat XSS. Alternatif yang lebih aman: cookie httpOnly + pengecekan di `middleware`/`proxy` Next.js.
-- Pengecekan login di sisi client, sehingga halaman sempat menampilkan "Loading..." sebelum redirect.
 - Token WebSocket dikirim lewat query string (browser tidak bisa memasang header di WebSocket), sehingga ikut tercatat di log uvicorn. Risikonya dibatasi oleh umur access token yang hanya 15 menit.
 - Token WebSocket hanya dicek saat connect. Jika koneksi putus, frontend reconnect dengan token terbaru.
 - Refresh token stateless: tidak bisa dicabut sebelum kedaluwarsa.
@@ -202,6 +204,6 @@ Alur status: `open → in_progress → resolved → closed`, dengan jalur buka k
 - Batas 5 MB dicek setelah upload diterima: FastAPI menyimpan file ke file sementara lebih dulu, juga untuk request tanpa login. Di produksi, batasi ukuran body di reverse proxy (misalnya `client_max_body_size` di nginx).
 
 ### Yang belum dikerjakan
-- Fitur bonus lain: indikator mengetik dan status dibaca, badge pesan belum dibaca, pagination dan pencarian, notifikasi real-time di daftar tiket, rate limiting login, deploy online.
+- Fitur bonus lain: indikator mengetik dan status dibaca, badge pesan belum dibaca, pagination dan pencarian, notifikasi real-time di daftar tiket, deploy online.
 - Pencabutan refresh token (butuh tabel token atau denylist).
 - Test otomatis untuk frontend; saat ini frontend diverifikasi dengan `npm run build` dan uji manual dua browser.

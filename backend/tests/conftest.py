@@ -21,6 +21,9 @@ PASSWORD_HASH = hash_password(PASSWORD)  # hashed once: bcrypt is slow on purpos
 
 @pytest.fixture(autouse=True)
 def fresh_db():
+    from app.routers.auth import reset_rate_limiter
+
+    reset_rate_limiter()
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 

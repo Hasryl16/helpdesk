@@ -34,7 +34,6 @@ def update_ticket(
     ticket = ticket_service.get_ticket_for_user(db, user, ticket_id)
     ticket = ticket_service.update_ticket(db, user, ticket, data)
     out = TicketOut.model_validate(ticket)
-    # Runs right after the response is sent: everyone viewing the ticket sees the change.
     background.add_task(broadcast, ticket.id, {"type": "ticket", "ticket": out.model_dump(mode="json")})
     return out
 
@@ -50,7 +49,7 @@ def upload_attachment(
     ticket_id: int, file: UploadFile, user: CurrentUser, db: DbSession, background: BackgroundTasks
 ):
     ticket = ticket_service.get_ticket_for_user(db, user, ticket_id)
-    ticket_service.ensure_not_closed(ticket)  # check before writing the file to disk
+    ticket_service.ensure_not_closed(ticket)
     name = attachments.save_image(file)
     message = ticket_service.add_message(db, user, ticket, attachment_path=name)
     out = MessageOut.model_validate(message)
@@ -63,6 +62,6 @@ def download_attachment(ticket_id: int, message_id: int, user: CurrentUser, db: 
     ticket = ticket_service.get_ticket_for_user(db, user, ticket_id)
     message = ticket_service.get_attachment_message(db, ticket, message_id)
     path = attachments.file_path(message.attachment_path)
-    if not path.is_file():  # e.g. the uploads folder was lost
+    if not path.is_file():
         raise HTTPException(404, "Attachment not found")
     return FileResponse(path, media_type=attachments.media_type(message.attachment_path))
